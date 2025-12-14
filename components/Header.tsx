@@ -35,13 +35,11 @@ const Header = () => {
 
   return (
     <header
-      className={`fixed w-full top-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'glass-surface shadow-sm' : 'bg-transparent'
-      }`}
+      className="fixed w-full top-0 z-50 px-6 lg:px-16 py-3 glass-header"
     >
-      <nav className="container mx-auto px-6 lg:px-12 py-6">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
+      <nav className="max-w-6xl w-full mx-auto">
+        <div className="flex items-center justify-between w-full">
+          {/* Logo - aligned with page content */}
           <Link
             href="/"
             className="flex items-center hover:opacity-80 transition-opacity duration-200"
@@ -51,13 +49,13 @@ const Header = () => {
               alt="sqwr"
               width={501}
               height={243}
-              className="h-10 w-auto"
+              className="h-8 w-auto"
               priority
             />
           </Link>
 
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* Desktop Menu - pushed to the right */}
+          <div className="hidden md:flex items-center gap-6 lg:gap-8 ml-auto">
             <ul className="flex items-center space-x-10">
               {menuItems.map((item) => (
                 <li key={item.href}>

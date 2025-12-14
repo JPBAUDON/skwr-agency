@@ -10,6 +10,7 @@ interface Pixel {
   headerX: number;
   headerY: number;
   appearTime: number;
+  migrationDelay: number; // Each pixel starts migration at different time
 }
 
 export default function PixelMigrationIntro() {
@@ -55,8 +56,8 @@ export default function PixelMigrationIntro() {
       const centerLogoWidth = 400;
       const centerLogoHeight = (img.height / img.width) * centerLogoWidth;
 
-      // Header logo size (small) - h-10 = 40px
-      const headerLogoHeight = 40;
+      // Header logo size (small) - h-8 = 32px
+      const headerLogoHeight = 32;
       const headerLogoWidth = (img.width / img.height) * headerLogoHeight;
 
       tempCanvas.width = centerLogoWidth / scale;
@@ -67,9 +68,17 @@ export default function PixelMigrationIntro() {
       const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
       const pixels: Pixel[] = [];
 
-      // Header position (approximate - left side with padding)
-      const headerPaddingX = width < 768 ? 24 : 48; // px-6 lg:px-12
-      const headerPaddingY = 24; // py-6
+      // Header position - EXACT match with Header.tsx
+      // Structure: <header px-6 lg:px-16><nav max-w-6xl mx-auto>
+      // lg breakpoint = 1024px (not 768px!)
+      const padding = width < 1024 ? 24 : 64; // px-6 = 24px, lg:px-16 = 64px
+      const maxNavWidth = 1152; // max-w-6xl = 1152px (6 * 16 * 12)
+      const availableWidth = width - 2 * padding;
+      const navWidth = Math.min(availableWidth, maxNavWidth);
+      const navOffsetX = padding + (availableWidth - navWidth) / 2;
+
+      const headerPaddingX = navOffsetX; // Exact position of logo in header
+      const headerPaddingY = 12; // py-3
 
       // Extract black pixels
       for (let y = 0; y < tempCanvas.height; y++) {
@@ -94,6 +103,9 @@ export default function PixelMigrationIntro() {
             // Random appear time
             const appearTime = Math.random();
 
+            // Random migration delay for staggered effect
+            const migrationDelay = Math.random();
+
             pixels.push({
               x: centerX,
               y: centerY,
@@ -102,6 +114,7 @@ export default function PixelMigrationIntro() {
               headerX,
               headerY,
               appearTime,
+              migrationDelay,
             });
           }
         }
@@ -112,18 +125,18 @@ export default function PixelMigrationIntro() {
 
       console.log(`Animating ${pixels.length} pixels`);
 
-      // Animation timeline
+      // Animation timeline - FASTER
       const startTime = Date.now();
-      const revealDuration = 1500; // 1.5s reveal
-      const holdDuration = 400; // 0.4s hold at center
-      const migrationDuration = 700; // 0.7s migration to header
+      const revealDuration = 800; // 0.8s reveal (faster!)
+      const holdDuration = 300; // 0.3s hold at center
+      const migrationDuration = 1400; // 1.4s migration (longer for better stagger)
       const fadeDuration = 200; // 0.2s fade
       const totalDuration = revealDuration + holdDuration + migrationDuration + fadeDuration;
 
       const pixelSize = scale;
 
-      function easeInOutCubic(t: number): number {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      function easeOutCubic(t: number): number {
+        return 1 - Math.pow(1 - t, 3);
       }
 
       function animate() {
@@ -152,19 +165,37 @@ export default function PixelMigrationIntro() {
             ctx.fillRect(pixel.centerX, pixel.centerY, pixelSize, pixelSize);
           });
         } else if (elapsed < revealDuration + holdDuration + migrationDuration) {
-          // Phase 3: Migration to header
-          const migrationProgress = (elapsed - revealDuration - holdDuration) / migrationDuration;
-          const easedProgress = easeInOutCubic(migrationProgress);
+          // Phase 3: STAGGERED MIGRATION - pixels escape one by one
+          const migrationElapsed = elapsed - revealDuration - holdDuration;
 
           ctx.fillStyle = '#000000';
           pixels.forEach((pixel) => {
-            const x = pixel.centerX + (pixel.headerX - pixel.centerX) * easedProgress;
-            const y = pixel.centerY + (pixel.headerY - pixel.centerY) * easedProgress;
+            // WIDE STAGGER: Each pixel starts at very different times
+            // migrationDelay 0 = starts immediately
+            // migrationDelay 1 = starts at 70% of migration duration
+            const pixelStartTime = pixel.migrationDelay * migrationDuration * 0.7;
+            const pixelDuration = migrationDuration * 0.6; // Fast individual travel
 
-            // Scale down pixel size during migration
-            const currentPixelSize = pixelSize * (1 - easedProgress * 0.5);
+            // Calculate individual pixel progress
+            let pixelProgress = (migrationElapsed - pixelStartTime) / pixelDuration;
+            pixelProgress = Math.max(0, Math.min(1, pixelProgress)); // Clamp 0-1
 
-            ctx.fillRect(x, y, currentPixelSize, currentPixelSize);
+            if (pixelProgress > 0) {
+              // Pixel has started moving
+              const easedProgress = easeOutCubic(pixelProgress);
+
+              // Interpolate position
+              const x = pixel.centerX + (pixel.headerX - pixel.centerX) * easedProgress;
+              const y = pixel.centerY + (pixel.headerY - pixel.centerY) * easedProgress;
+
+              // Scale down pixel size during migration
+              const currentPixelSize = pixelSize * (1 - easedProgress * 0.5);
+
+              ctx.fillRect(x, y, currentPixelSize, currentPixelSize);
+            } else {
+              // Pixel still at center (hasn't started yet)
+              ctx.fillRect(pixel.centerX, pixel.centerY, pixelSize, pixelSize);
+            }
           });
         } else if (elapsed < totalDuration) {
           // Phase 4: Fade out at header position
